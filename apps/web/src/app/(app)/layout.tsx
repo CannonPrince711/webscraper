@@ -1,7 +1,9 @@
 import { AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { SidebarNav } from '@/components/app-nav';
+import { StopButton } from '@/components/stop-button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { isDesktop } from '@/lib/desktop';
 import { configurationWarnings, features } from '@/lib/env';
 import { getStore } from '@/lib/store';
 
@@ -43,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {context.role}
             </span>
             <ThemeToggle />
+            {isDesktop ? <StopButton /> : null}
             <div className="grid h-8 w-8 place-items-center rounded-full bg-surface-raised text-xs font-medium">
               {(context.user.fullName ?? context.user.email ?? 'U').slice(0, 1).toUpperCase()}
             </div>

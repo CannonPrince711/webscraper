@@ -40,18 +40,37 @@ Then open <http://localhost:3000>, press **New job**, and point it at any page.
 | `npm run test:engine` | Python engine test suite |
 | `npm run typecheck` | `tsc --noEmit` across every TypeScript package |
 
-## Windows desktop app (`Webscraper.exe`)
+## Windows desktop app
 
-Download `Webscraper.exe` from the [Releases](../../releases) page and run it. It
-starts the scraping engine and the dashboard on loopback ports and opens your
-browser; close the console window to quit. Data and generated secrets live in
-`%LOCALAPPDATA%\Webscraper`. To add proxy or AI credentials, create
-`%LOCALAPPDATA%\Webscraper\.env` (same variables as `.env.example`).
+Download from the [Releases](../../releases) page, either:
+
+- **`Webscraper-Setup.exe`** – unpacks the app into one folder you choose (default
+  `Documents\Webscraper`). No registry entries, no uninstaller: delete the folder
+  to remove it.
+- **`Webscraper-windows-x64-portable.zip`** – the same folder, unzipped by you.
+
+Run `Webscraper.exe`; your browser opens to the dashboard. Everything is in that
+one folder:
+
+```
+Webscraper.exe   _internal\   data\
+                  (program)     (your settings, secrets and scraped data)
+```
+
+- **Stop** – the red button in the header exits everything (dashboard, engine,
+  running jobs are marked interrupted). Closing the browser tab does not stop it.
+- **Settings → Variables** – edit AI provider, proxy (Decodo), engine and limit
+  variables; saved to `data\.env`. Secrets are write-only. Changes apply on restart
+  (there is a *Save & restart* button).
+- **Settings → Updates / auto-update** – checks GitHub Releases at start-up and
+  every few hours, verifies the download against `SHA256SUMS.txt`, swaps the
+  program files and relaunches. `data\` is never touched. Turn off the start-up
+  install with *Install updates automatically*.
+
 Headless-Chromium rendering is off in the desktop build (no bundled browser).
-
-Build it yourself on Windows with `./packaging/desktop/build_windows.ps1`
-(needs Node 20+ and Python 3.11+), or push a `v*` tag and the
-**Build Webscraper.exe** workflow builds, smoke-tests and attaches it to a release.
+Build it yourself with `./packaging/desktop/build_windows.ps1` (Node 20+, Python
+3.11+), or push a `v*` tag and the **Build Webscraper** workflow builds, tests and
+attaches `Setup.exe`, the zip and `SHA256SUMS.txt` to a release.
 
 ## Using residential proxies (Decodo)
 

@@ -1,9 +1,11 @@
 import { AlertTriangle, CheckCircle2, KeyRound, Webhook as WebhookIcon } from 'lucide-react';
 import { formatNumber, formatRelativeTime } from '@webscraper/shared';
+import { EnvVariablesCard, UpdateCard } from '@/components/desktop-settings';
 import { ProxyTestCard } from '@/components/proxy-test-card';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { isDesktop } from '@/lib/desktop';
 import { engineHealthOrNull } from '@/lib/engine';
 import { configurationWarnings, features } from '@/lib/env';
 import { getStore } from '@/lib/store';
@@ -115,6 +117,13 @@ export default async function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {isDesktop ? (
+        <>
+          <EnvVariablesCard />
+          <UpdateCard />
+        </>
+      ) : null}
 
       <ProxyTestCard
         decodoConfigured={Boolean(proxyChecks.decodo_configured)}

@@ -20,7 +20,7 @@
     "start:worker": "npm --workspace @webscraper/worker run start",
     "lint": "npm --workspace @webscraper/web run lint && npm --workspace @webscraper/worker run lint",
     "typecheck": "npm --workspace @webscraper/shared run build && npm --workspace @webscraper/shared run typecheck && npm --workspace @webscraper/worker run typecheck && npm --workspace @webscraper/web run typecheck",
-    "test": "npm --workspace @webscraper/shared run test && npm --workspace @webscraper/worker run test",
+    "test": "npm --workspace @webscraper/shared run test && npm --workspace @webscraper/worker run test && npm --workspace @webscraper/web run test",
     "test:engine": "cd services/engine && .venv/bin/python -m pytest -q || python3 -m pytest -q",
     "test:all": "npm run test && npm run test:engine",
     "db:push": "supabase db push",
