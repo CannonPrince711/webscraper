@@ -1,0 +1,110 @@
+# Full local stack:  docker compose up --build
+#
+#   web     → http://localhost:3000   Next.js UI + BFF API
+#   engine  → http://localhost:8000   FastAPI scraping engine (/docs for OpenAPI)
+#   worker  → (no port)               Node.js BullMQ consumers
+#   redis   → localhost:6379          queue + rate-limit counters
+#
+# Supabase (Postgres/Auth/Storage) runs either in the cloud or via the
+# Supabase CLI (`supabase start`). Point the env vars at whichever you use.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  engine:
+    build:
+      context: ./services/engine
+      dockerfile: Dockerfile
+    environment:
+      ENGINE_API_KEY: ${ENGINE_API_KEY:-dev-engine-key-change-me}
+      ENGINE_ENABLE_BROWSER: ${ENGINE_ENABLE_BROWSER:-true}
+      ENGINE_MAX_CONCURRENCY: ${ENGINE_MAX_CONCURRENCY:-8}
+      ENGINE_RESPECT_ROBOTS: ${ENGINE_RESPECT_ROBOTS:-true}
+      ENGINE_PROXY_URLS: ${ENGINE_PROXY_URLS:-}
+      # Managed residential proxies. Credentials stay in the orchestrator's
+      # environment: jobs reference the policy ('decodo'), never the password.
+      DECODO_USERNAME: ${DECODO_USERNAME:-}
+      DECODO_PASSWORD: ${DECODO_PASSWORD:-}
+      DECODO_ENDPOINT: ${DECODO_ENDPOINT:-gate.decodo.com:7000}
+      DECODO_COUNTRY: ${DECODO_COUNTRY:-}
+      DECODO_SESSION_MINUTES: ${DECODO_SESSION_MINUTES:-10}
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Chromium needs far more than the default 64MB of shared memory, and it
+    # needs to be able to fork its own renderer processes. Docker's *default*
+    # seccomp profile is left in place on purpose: writing a custom one that is
+    # both permissive enough for Chromium's sandbox and still restrictive is a
+    # job for `--security-opt seccomp=<profile>` with a profile generated and
+    # tested against your Chromium version, not something to copy from a repo.
+    init: true
+    shm_size: "1gb"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      QUEUE_PREFIX: ${QUEUE_PREFIX:-webscraper}
+      ENGINE_URL: http://engine:8000
+      ENGINE_API_KEY: ${ENGINE_API_KEY:-dev-engine-key-change-me}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      APP_SECRET: ${APP_SECRET:-dev-only-secret}
+    depends_on:
+      redis:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NODE_ENV: production
+      APP_URL: http://localhost:3000
+      APP_SECRET: ${APP_SECRET:-dev-only-secret}
+      REDIS_URL: redis://redis:6379
+      QUEUE_PREFIX: ${QUEUE_PREFIX:-webscraper}
+      ENGINE_URL: http://engine:8000
+      ENGINE_API_KEY: ${ENGINE_API_KEY:-dev-engine-key-change-me}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  redis-data:

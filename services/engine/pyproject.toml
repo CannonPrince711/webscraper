@@ -1,0 +1,30 @@
+[project]
+name = "webscraper-engine"
+version = "0.1.0"
+description = "Hardened scraping engine for the Webscraper platform"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "ASYNC"]
+# Ignored deliberately, with reasons:
+#   E501  — line length is enforced by the formatter, not the linter
+#   B008  — FastAPI's dependency injection *requires* call-in-default
+#   SIM108/102/110/105 — micro-style suggestions; the explicit forms here read
+#                        better next to their explanatory comments
+#   C416  — an explicit comprehension is clearer than list()
+#   UP042 — `(str, Enum)` is kept over StrEnum so the JSON representation is
+#           unambiguous across Pydantic versions
+ignore = ["E501", "B008", "SIM108", "SIM102", "SIM105", "SIM110", "C416", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "SIM117"]

@@ -1,0 +1,33 @@
+{
+  "name": "webscraper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered web scraping platform \u2014 Next.js + Tailwind + Supabase + FastAPI + Node.js workers",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:web",
+    "dev:web": "npm --workspace @webscraper/shared run build && npm --workspace @webscraper/web run dev",
+    "dev:worker": "npm --workspace @webscraper/shared run build && npm --workspace @webscraper/worker run dev",
+    "dev:engine": "cd services/engine && .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "build": "npm --workspace @webscraper/shared run build && npm --workspace @webscraper/worker run build && npm --workspace @webscraper/web run build",
+    "start:web": "npm --workspace @webscraper/web run start",
+    "start:worker": "npm --workspace @webscraper/worker run start",
+    "lint": "npm --workspace @webscraper/web run lint && npm --workspace @webscraper/worker run lint",
+    "typecheck": "npm --workspace @webscraper/shared run build && npm --workspace @webscraper/shared run typecheck && npm --workspace @webscraper/worker run typecheck && npm --workspace @webscraper/web run typecheck",
+    "test": "npm --workspace @webscraper/shared run test && npm --workspace @webscraper/worker run test",
+    "test:engine": "cd services/engine && .venv/bin/python -m pytest -q || python3 -m pytest -q",
+    "test:all": "npm run test && npm run test:engine",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3"
+  }
+}
