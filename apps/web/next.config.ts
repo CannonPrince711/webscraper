@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { NextConfig } from 'next';
 
@@ -42,6 +43,15 @@ if (existsSync(rootEnvFile)) {
 const isProduction = process.env.NODE_ENV === 'production';
 
 /**
+ * The Windows desktop build serves the dashboard over plain http on loopback.
+ * HSTS and `upgrade-insecure-requests` are right for a hosted deployment and
+ * would break that, so they are skipped when this flag was set at build time.
+ */
+const isDesktop = process.env.WEBSCRAPER_DESKTOP === '1';
+const secureTransport = isProduction && !isDesktop;
+const monorepoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+
+/**
  * Hosts allowed to reach the dev server. The sandbox that runs this checkout
  * serves the app from a generated `*.e2b.app` hostname, and Next's dev server
  * rejects cross-origin requests it does not recognise — which would silently
@@ -65,7 +75,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  isProduction ? 'upgrade-insecure-requests' : '',
+  secureTransport ? 'upgrade-insecure-requests' : '',
 ]
   .filter(Boolean)
   .join('; ');
@@ -80,6 +90,9 @@ const nextConfig: NextConfig = {
   // sources fails outright. `tsc --noEmit` checks the same compiled
   // declarations, which is why the root scripts build shared first.
   serverExternalPackages: ['bullmq', 'ioredis'],
+  // Desktop builds ship a self-contained server (`.next/standalone`); the
+  // tracing root is the monorepo so the compiled `@webscraper/shared` is included.
+  ...(isDesktop ? { output: 'standalone' as const, outputFileTracingRoot: monorepoRoot } : {}),
   allowedDevOrigins,
 
   experimental: {
@@ -97,7 +110,7 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          ...(isProduction
+          ...(secureTransport
             ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
             : []),
         ],

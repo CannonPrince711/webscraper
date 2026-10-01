@@ -84,8 +84,15 @@ export const features = {
  */
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
+/**
+ * The Windows desktop app is a single-user, loopback-only server that is
+ * *meant* to run on the local JSON store. It opts in explicitly; a hosted
+ * deployment never sets this, so the production guard below still protects it.
+ */
+const isDesktop = process.env.WEBSCRAPER_DESKTOP === '1';
+
 /** Fail fast: a production deployment must never serve the demo store. */
-if (env.NODE_ENV === 'production' && features.demoMode && !isBuildPhase) {
+if (env.NODE_ENV === 'production' && features.demoMode && !isBuildPhase && !isDesktop) {
   throw new Error(
     'Refusing to start: NODE_ENV=production but Supabase is not configured. ' +
       'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, or run with NODE_ENV=development for the demo instance.',
