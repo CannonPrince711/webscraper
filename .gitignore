@@ -45,3 +45,8 @@ logs/
 # Supabase CLI
 supabase/.branches
 supabase/.temp
+
+# Desktop (Windows exe) packaging
+packaging/desktop/stage/
+packaging/desktop/build/
+packaging/desktop/.venv/

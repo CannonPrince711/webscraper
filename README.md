@@ -40,6 +40,19 @@ Then open <http://localhost:3000>, press **New job**, and point it at any page.
 | `npm run test:engine` | Python engine test suite |
 | `npm run typecheck` | `tsc --noEmit` across every TypeScript package |
 
+## Windows desktop app (`Webscraper.exe`)
+
+Download `Webscraper.exe` from the [Releases](../../releases) page and run it. It
+starts the scraping engine and the dashboard on loopback ports and opens your
+browser; close the console window to quit. Data and generated secrets live in
+`%LOCALAPPDATA%\Webscraper`. To add proxy or AI credentials, create
+`%LOCALAPPDATA%\Webscraper\.env` (same variables as `.env.example`).
+Headless-Chromium rendering is off in the desktop build (no bundled browser).
+
+Build it yourself on Windows with `./packaging/desktop/build_windows.ps1`
+(needs Node 20+ and Python 3.11+), or push a `v*` tag and the
+**Build Webscraper.exe** workflow builds, smoke-tests and attaches it to a release.
+
 ## Using residential proxies (Decodo)
 
 Sites that block datacentre IPs need residential egress. The platform treats a
