@@ -1,4 +1,4 @@
-name: Build Webscraper.exe
+name: Build Webscraper (portable zip + installer)
 
 on:
   workflow_dispatch:
@@ -19,17 +19,28 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
 
-      # npm install, PyInstaller venv, freeze, smoke test — all of it
-      - name: Freeze the executable
+      # Stamp the build with the tag (v0.2.0 -> 0.2.0) so auto-update can
+      # compare versions; manual runs fall back to package.json.
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: echo "WEBSCRAPER_VERSION=$($env:GITHUB_REF_NAME.TrimStart('v'))" >> $env:GITHUB_ENV
+
+      # npm ci, updater tests, PyInstaller, update-swap self-test, Inno Setup,
+      # silent install + smoke test of the installed app, checksums.
+      - name: Build, test and package
         shell: pwsh
         run: ./packaging/desktop/build_windows.ps1
 
       - uses: actions/upload-artifact@v4
         with:
           name: Webscraper-windows-x64
-          path: dist/Webscraper.exe
+          path: |
+            dist/Webscraper-windows-x64-portable.zip
+            dist/Webscraper-Setup.exe
+            dist/SHA256SUMS.txt
 
-      - name: Attach it to the release
+      - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         env: { GH_TOKEN: '${{ github.token }}' }
@@ -38,4 +49,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $env:GITHUB_REF_NAME --title "Webscraper $env:GITHUB_REF_NAME" --generate-notes
           }
-          gh release upload $env:GITHUB_REF_NAME dist/Webscraper.exe --clobber
+          gh release upload $env:GITHUB_REF_NAME dist/Webscraper-windows-x64-portable.zip dist/Webscraper-Setup.exe dist/SHA256SUMS.txt --clobber
