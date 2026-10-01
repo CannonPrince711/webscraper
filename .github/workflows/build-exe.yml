@@ -2,6 +2,11 @@ name: Build Webscraper (portable zip + installer)
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Publish a release with this new tag (e.g. v0.3.0). Leave empty to only build.'
+        required: false
+        default: ''
   push:
     tags: ['v*']
 
@@ -19,12 +24,26 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
 
-      # Stamp the build with the tag (v0.2.0 -> 0.2.0) so auto-update can
-      # compare versions; manual runs fall back to package.json.
-      - name: Set version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      # One place that decides whether this run publishes, and under which tag:
+      # a pushed v* tag, or the manual `release_tag` input. Anything else only builds.
+      - name: Resolve release tag
         shell: pwsh
-        run: echo "WEBSCRAPER_VERSION=$($env:GITHUB_REF_NAME.TrimStart('v'))" >> $env:GITHUB_ENV
+        env:
+          INPUT_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          $tag = ''
+          if ($env:GITHUB_REF -like 'refs/tags/v*') { $tag = $env:GITHUB_REF_NAME }
+          elseif ($env:INPUT_TAG) { $tag = $env:INPUT_TAG.Trim() }
+          if ($tag) {
+            if ($tag -notmatch '^v\d+\.\d+\.\d+$') { throw "Release tag '$tag' must look like v1.2.3" }
+            if ($env:INPUT_TAG) {
+              # Never move or reuse a tag that already exists.
+              $existing = git ls-remote --tags origin "refs/tags/$tag"
+              if ($existing) { throw "Tag $tag already exists; choose a new version." }
+            }
+            echo "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+            echo "WEBSCRAPER_VERSION=$($tag.TrimStart('v'))" >> $env:GITHUB_ENV
+          }
 
       # npm ci, updater tests, PyInstaller, update-swap self-test, Inno Setup,
       # silent install + smoke test of the installed app, checksums.
@@ -40,13 +59,16 @@ jobs:
             dist/Webscraper-Setup.exe
             dist/SHA256SUMS.txt
 
-      - name: Attach to the release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish the release
+        if: env.RELEASE_TAG != ''
         shell: pwsh
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
-          gh release view $env:GITHUB_REF_NAME 2>$null
+          # --target pins a new tag to exactly the commit that was built.
+          gh release view $env:RELEASE_TAG 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --title "Webscraper $env:GITHUB_REF_NAME" --generate-notes
+            gh release create $env:RELEASE_TAG --target $env:GITHUB_SHA --title "Webscraper $env:RELEASE_TAG" --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
           }
-          gh release upload $env:GITHUB_REF_NAME dist/Webscraper-windows-x64-portable.zip dist/Webscraper-Setup.exe dist/SHA256SUMS.txt --clobber
+          gh release upload $env:RELEASE_TAG dist/Webscraper-windows-x64-portable.zip dist/Webscraper-Setup.exe dist/SHA256SUMS.txt --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'gh release upload failed' }
